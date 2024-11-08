@@ -1,5 +1,3 @@
-from configs.dsdl.cityscapes import data_preprocessor
-
 _base_ = [
     '../_base_/models/lpsnet.py',
     '../_base_/datasets/cityscapes_768x768.py',
