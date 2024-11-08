@@ -36,7 +36,7 @@ conda install nvidia/label/cuda-11.7.0::cuda-toolkit
 conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia
 ```
 
-#### Part 3: Installation of MMSegmentation and all related libraries
+#### Part 4: Installation of MMSegmentation and all related libraries
 ```bash
 # Install libraries from MMOpenLab
 pip install -U openmim
@@ -61,7 +61,7 @@ i
 :wq
 ```
 
-#### Part 4: Verification
+#### Part 5: Verification
 ```bash
 # Download the network file and the pretrained model
 mim download mmsegmentation --config pspnet_r50-d8_4xb2-40k_cityscapes-512x1024 --dest .
