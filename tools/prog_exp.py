@@ -8,11 +8,16 @@ import hashlib
 import random
 import numpy as np
 import mmcv
+import pickle
+import signal
+import sys
 from mmengine.config import Config
 from mmseg.models.backbones.lpsnet import LPSNet
 from mmseg.models.decode_heads import LPSNetHead
 import time
 import glob
+import pandas as pd 
+import openpyxl
 
 def measure_latency_ms(model, input_tensor, iterations=100):
     model.eval()
@@ -95,43 +100,52 @@ class LPSNetExpansion:
     def _expand_depth_to_target(self, target):
         arch_save = []
         for op in self.delta_depth:
-            arch_tmp = [self]
             steplen = 1
-            while arch_tmp[-1].latency < target:
-                arch_tmp.append(arch_tmp[-1]._expand_depth(op, steplen))
+            while True:
+                arch = self._expand_depth(op, steplen)
+                if arch.latency >= target:
+                    break
                 steplen += 1
-            if abs(target - arch_tmp[-2].latency) < abs(target - arch_tmp[-1].latency):
-                arch_save.append(arch_tmp[-2])
+            # Now arch.latency >= target
+            # Also compute arch_prev
+            arch_prev = self._expand_depth(op, steplen - 1)
+            # Choose the architecture closer to the target latency
+            if abs(target - arch_prev.latency) < abs(target - arch.latency):
+                arch_save.append(arch_prev)
             else:
-                arch_save.append(arch_tmp[-1])
+                arch_save.append(arch)
         return arch_save
 
     def _expand_width_to_target(self, target):
         arch_save = []
         for op in self.delta_width:
-            arch_tmp = [self]
             steplen = 1
-            while arch_tmp[-1].latency < target:
-                arch_tmp.append(arch_tmp[-1]._expand_width(op, steplen))
+            while True:
+                arch = self._expand_width(op, steplen)
+                if arch.latency >= target:
+                    break
                 steplen += 1
-            if abs(target - arch_tmp[-2].latency) < abs(target - arch_tmp[-1].latency):
-                arch_save.append(arch_tmp[-2])
+            arch_prev = self._expand_width(op, steplen - 1)
+            if abs(target - arch_prev.latency) < abs(target - arch.latency):
+                arch_save.append(arch_prev)
             else:
-                arch_save.append(arch_tmp[-1])
+                arch_save.append(arch)
         return arch_save
 
     def _expand_resolution_to_target(self, target):
         arch_save = []
         for op in self.delta_resolution:
-            arch_tmp = [self]
             steplen = 1
-            while arch_tmp[-1].latency < target:
-                arch_tmp.append(arch_tmp[-1]._expand_resolution(op, steplen))
+            while True:
+                arch = self._expand_resolution(op, steplen)
+                if arch.latency >= target:
+                    break
                 steplen += 1
-            if abs(target - arch_tmp[-2].latency) < abs(target - arch_tmp[-1].latency):
-                arch_save.append(arch_tmp[-2])
+            arch_prev = self._expand_resolution(op, steplen - 1)
+            if abs(target - arch_prev.latency) < abs(target - arch.latency):
+                arch_save.append(arch_prev)
             else:
-                arch_save.append(arch_tmp[-1])
+                arch_save.append(arch)
         return arch_save
 
     def _measure_target_latency(self):
@@ -171,6 +185,11 @@ class LPSNetExpansion:
         return (self.miou - self.parent.miou) / (self.latency - self.parent.latency)
 
     def update_miou(self):
+        # Check if miou has already been computed
+        if self.miou > -1:
+            print('mIoU already computed for this architecture')
+            return
+
         print('Training architecture', self)
 
         # Create a temporary directory for this experiment
@@ -200,16 +219,16 @@ class LPSNetExpansion:
         cfg.dump(temp_config_path)
 
         print('temp_config_path:', temp_config_path)
-#        command = [
-#            'python', 'tools/train.py', temp_config_path,
-#            '--launcher', 'none',
-#            '--work-dir', temp_work_dir
-#        ]
         command = [
-            'bash', 'tools/dist_train.sh', temp_config_path,
-            '7',
+            'python', 'tools/train.py', temp_config_path,
+            '--launcher', 'none',
             '--work-dir', temp_work_dir
         ]
+#        command = [
+#            'bash', 'tools/dist_train.sh', temp_config_path,
+#            '7',
+#            '--work-dir', temp_work_dir
+#        ]
 
         # Run the training process
         print('Starting training...')
@@ -243,34 +262,150 @@ class LPSNetExpansion:
             self.miou = -1
         else:
             self.miou = miou
-            print('Updated mIoU:', self.miou)
         
         # Clean up temporary files if desired
         shutil.rmtree(temp_dir)
 
+def initialize_excel(excel_file):
+    if os.path.exists(excel_file):
+        # Load existing data
+        df = pd.read_excel(excel_file)
+        print(f'Loaded existing results from {excel_file}')
+    else:
+        # Create a new DataFrame with the required columns
+        columns = ['Step', 'Arch_ID', 'Depth', 'Width', 'Resolution', 'mIoU', 'Latency_ms', 'Slope']
+        df = pd.DataFrame(columns=columns)
+        print(f'Created new results file at {excel_file}')
+    return df
+
 def main():
-    # Starting with a tiny network first
-    depth = [1, 1, 1, 1, 1]
-    width = [4, 8, 16, 32, 32]
-    resolution = [0.5, 0, 0]
-    in_channels = 32
-    arch_init = LPSNetExpansion(depth, width, resolution)
-    arch_init.update_miou()
+    # File to save progress
+    checkpoint_file = 'progress_checkpoint.pkl'
+
+    # Define results directory and Excel file path
+    results_dir = 'results'
+    os.makedirs(results_dir, exist_ok=True)
+    excel_file = os.path.join(results_dir, 'architecture_results.xlsx')
+
+    # Initialize or load the Excel file
+    df_results = initialize_excel(excel_file)
+
+    # Variables to hold state
+    best_arch = []
+    step = 0
+
+    # Check if a checkpoint exists
+    if os.path.exists(checkpoint_file):
+        # Load progress
+        with open(checkpoint_file, 'rb') as f:
+            best_arch, step = pickle.load(f)
+        print(f'Resuming from step {step + 1}')
+    else:
+        # Starting with a tiny network first
+        depth = [1, 3, 3, 10, 10]
+        width = [8, 24, 48, 96, 96]
+        resolution = [3/4, 1/4, 0]
+        arch_init = LPSNetExpansion(depth, width, resolution)
+        print('Updated latency: ', arch_init.latency)
+        arch_init.update_miou()
+        print('Updated miou: ', arch_init.miou)
+        best_arch = [arch_init]
+        step = 0
+
+        # Log the initial architecture
+        arch_id = arch_init.hash  # Using hash as unique ID
+        df_results = df_results._append({
+            'Step': step + 1,
+            'Arch_ID': arch_id,
+            'Depth': arch_init.depth,
+            'Width': arch_init.width,
+            'Resolution': arch_init.resolution,
+            'mIoU': arch_init.miou,
+            'Latency_ms': arch_init.latency,
+            'Slope': float('inf')  # Initial architecture has no slope
+        }, ignore_index=True)
+
+        # Save the initial results to Excel
+        df_results.to_excel(excel_file, index=False)
+        print(f'Logged initial architecture to {excel_file}')
+
+    # Total number of steps
+    total_steps = 14
+
+    # Function to handle interrupts
+    def signal_handler(sig, frame):
+        print('\nProcess interrupted. Saving progress...')
+        with open(checkpoint_file, 'wb') as f:
+            pickle.dump((best_arch, step), f)
+        print('Progress saved. Exiting.')
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     # Expansion steps
-   
-    best_arch = [arch_init]
-    for step in range(14):
+    for step in range(step, total_steps):
         print(f'\nExpansion Step {step + 1}')
         base_arch = best_arch[-1]
         arch_expand = base_arch.expand_all()
-        for arch in arch_expand:
-            print("1")
-#        slopes = np.array([arch.get_slope() for arch in arch_expand])
-#        best_idx = np.argmax(slopes)
-#        best_arch.append(arch_expand[best_idx])
-#        print('Current best architecture:', best_arch[-1])
+        print('Measuring miou of expanded architectures...')
 
+        # List to hold data for this step
+        step_data = []
 
-if __name__ == '__main__':
+        for i, arch in enumerate(arch_expand, 1):
+            print(f'Expanded architecture {i}')
+            arch.update_miou()
+            print('Updated miou: ', arch.miou)
+            print('Parent miou: ', arch.parent.miou)
+            print('Updated latency: ', arch.latency)
+            print('Parent latency: ', arch.parent.latency)
+            try:
+                slope = arch.get_slope()
+                print('Slope: ', slope)
+            except AssertionError:
+                print('AssertionError: Parent mIoU or latency is invalid.')
+                slope = float('-inf')  # Assign a very low slope
+            arch.slope = slope  # Optionally, store slope in the arch object
+
+            # Assign unique architecture ID
+            arch_id = arch.hash
+
+            # Append data to step_data
+            step_data.append({
+                'Step': step + 1,
+                'Arch_ID': arch_id,
+                'Depth': arch.depth,
+                'Width': arch.width,
+                'Resolution': arch.resolution,
+                'mIoU': arch.miou,
+                'Latency_ms': arch.latency,
+                'Slope': slope
+            })
+
+        # Append step_data to the results DataFrame
+        df_new = pd.DataFrame(step_data)
+        df_results = pd.concat([df_results, df_new], ignore_index=True)
+        
+        # Save the updated DataFrame to Excel
+        df_results.to_excel(excel_file, index=False)
+        print(f'Logged step {step + 1} results to {excel_file}')
+        
+        # Select the best architecture based on slope
+        slopes = df_new['Slope'].values
+        best_idx = np.argmax(slopes)
+        best_arch.append(arch_expand[best_idx])
+        print('Current best architecture:')
+        print('Depth:', best_arch[-1].depth)
+        print('Width:', best_arch[-1].width)
+        print('Resolution:', best_arch[-1].resolution)
+        
+        # Save progress to checkpoint
+        with open(checkpoint_file, 'wb') as f:
+            pickle.dump((best_arch, step + 1), f)
+        
+        print(f'Progress saved up to step {step + 1}')
+
+    print('\nAll expansion steps completed.')
+
+if __name__ == '__main__':  
     main()
