@@ -42,7 +42,7 @@ class LPSNetExpansion:
         self.resolution = resolution
         self._check_net_param()
         self.parent = parent
-        self.latency = self.eval_latency
+        self.latency = self.eval_latency()
         self.miou = -1
 
         self.delta_depth = ((0, 1, 1, 1, 1), (0, 0, 1, 1, 1), (0, 0, 0, 1, 1))
@@ -69,7 +69,6 @@ class LPSNetExpansion:
         model.cuda()
         data = torch.rand(datashape).cuda()
         lat = measure_latency_ms(model, data)
-        print(lat)
         return lat
 
     def _expand_depth(self, op, steplen=1):
@@ -201,9 +200,14 @@ class LPSNetExpansion:
         cfg.dump(temp_config_path)
 
         print('temp_config_path:', temp_config_path)
+#        command = [
+#            'python', 'tools/train.py', temp_config_path,
+#            '--launcher', 'none',
+#            '--work-dir', temp_work_dir
+#        ]
         command = [
-            'python', 'tools/train.py', temp_config_path,
-            '--launcher', 'none',
+            'bash', 'tools/dist_train.sh', temp_config_path,
+            '7',
             '--work-dir', temp_work_dir
         ]
 
@@ -254,17 +258,18 @@ def main():
     arch_init.update_miou()
 
     # Expansion steps
+   
     best_arch = [arch_init]
     for step in range(14):
         print(f'\nExpansion Step {step + 1}')
         base_arch = best_arch[-1]
         arch_expand = base_arch.expand_all()
         for arch in arch_expand:
-            arch.update_miou()
-        slopes = np.array([arch.get_slope() for arch in arch_expand])
-        best_idx = np.argmax(slopes)
-        best_arch.append(arch_expand[best_idx])
-        print('Current best architecture:', best_arch[-1])
+            print("1")
+#        slopes = np.array([arch.get_slope() for arch in arch_expand])
+#        best_idx = np.argmax(slopes)
+#        best_arch.append(arch_expand[best_idx])
+#        print('Current best architecture:', best_arch[-1])
 
 
 if __name__ == '__main__':
