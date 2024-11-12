@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from mmseg.registry import MODELS
 from mmengine.model import BaseModule
+import time
 
 def upsample(x, size):
     if x.shape[-2] != size[0] or x.shape[-1] != size[1]:
@@ -112,15 +113,53 @@ class LPSNet(BaseModule):
             outs = self.net(x_processed)
             return [outs[-1]]  # Return only the last feature
         elif self.num_paths == 2:
+            #print('Image Input')
+            #print('Image size: ', x.size())
+            #time.sleep(10)
             xh, xl = self._preprocess_input(x)
+            #print('Input processor')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = self.netH.stages[0](xh), self.netL.stages[0](xl)
+            #print('Stage 1')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = self.netH.stages[1](xh), self.netL.stages[1](xl)
+            #print('Stage 2')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = self.netH.stages[2](xh), self.netL.stages[2](xl)
+            #print('Stage 3')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = bi_interaction(xh, xl)
+            #print('Interaction 1')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = self.netH.stages[3](xh), self.netL.stages[3](xl)
+            #print('Stage 4')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = bi_interaction(xh, xl)
+            #print('Interaction 2')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             xh, xl = self.netH.stages[4](xh), self.netL.stages[4](xl)
+            #print('Stage 5')
+            #print('High Resolution size: ', xh.size())
+            #print('Low Resolution size: ', xl.size())
+            #time.sleep(10)
             x_cat = torch.cat([xh, upsample(xl, (int(xh.shape[-2]), int(xh.shape[-1])))], dim=1)
+            #print('Image Output')
+            #print('Image size: ', x_cat.size())
+            #time.sleep(10)
             return [x_cat]  # Return the concatenated feature
         elif self.num_paths == 3:
             x1, x2, x3 = self._preprocess_input(x)
