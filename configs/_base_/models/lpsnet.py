@@ -18,9 +18,9 @@ model = dict(
     ),
     backbone=dict(
         type='LPSNet',
-        depth=(1, 1, 1, 1, 1),
-        width=(4, 8, 16, 32, 32),
-        resolution = (1 / 2, 0, 0),
+        depth=(1, 3, 3, 10, 10),
+        width=(8, 24, 48, 96, 96),
+        resolution = (3/4, 1/4, 0),
         deploy=False,
         init_cfg=None
     ),
