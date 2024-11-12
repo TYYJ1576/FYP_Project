@@ -7,5 +7,5 @@ _base_ = [
 
 model = dict(
     backbone = dict(depth = (1, 3, 3, 10, 10), width = (8, 24, 64, 160, 160), resolution = (1, 1 / 4, 0)),
-    decode_head = dict(in_channels = 192)
+    decode_head = dict(in_channels = 320)
 )
