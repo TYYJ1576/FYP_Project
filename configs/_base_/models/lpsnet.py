@@ -26,7 +26,7 @@ model = dict(
     ),
     decode_head=dict(
         type='LPSNetHead',
-        in_channels=32,  # Adjust according to your model's output channels
+        in_channels=192,  # Adjust according to your model's output channels
         num_classes=19,
         loss_decode=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0
