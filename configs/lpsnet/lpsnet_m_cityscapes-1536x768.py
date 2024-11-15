@@ -5,20 +5,18 @@ _base_ = [
     '../_base_/schedules/schedule_90k.py',
 ]
 
-# Data pipeline settings
+crop_size = (1536, 768)
+
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations'),
     dict(
         type='RandomResize',
-        scale=(1536, 768),
+        scale=crop_size,
         ratio_range=(0.5, 2.0),
         resize_type='ResizeStepScaling',
         step_size=0.25,
         keep_ratio=True,
     ),
-    dict(type='RandomCrop', crop_size=(1536, 768), cat_max_ratio=0.75),
-    dict(type='RandomFlip', prob=0.5),
+    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
     dict(
         type='PhotoMetricDistortion',
         brightness_delta=0.4,

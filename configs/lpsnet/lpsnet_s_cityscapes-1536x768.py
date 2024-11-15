@@ -7,28 +7,24 @@ _base_ = [
 
 model = dict(
     backbone=dict(
-        type='LPSNet',
-        in_channels=3,
         depths=[1, 3, 3, 10, 10],
-        channels=[8, 24, 64, 160, 160],
-        scale_ratios=[1.0, 0.25],
-    ),
+        channels=[8, 24, 48, 96, 96],
+        scale_ratios=[0.75, 0.25]
+    )
 )
 
-# Data pipeline settings
+crop_size = (1536, 768)
+
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations'),
     dict(
         type='RandomResize',
-        scale=(1536, 768),
+        scale=crop_size,
         ratio_range=(0.5, 2.0),
         resize_type='ResizeStepScaling',
         step_size=0.25,
         keep_ratio=True,
     ),
-    dict(type='RandomCrop', crop_size=(1536, 768), cat_max_ratio=0.75),
-    dict(type='RandomFlip', prob=0.5),
+    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
     dict(
         type='PhotoMetricDistortion',
         brightness_delta=0.4,
