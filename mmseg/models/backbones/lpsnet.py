@@ -220,7 +220,10 @@ class LPSNet(BaseModule):
         channels,
         scale_ratios,
         in_channels=3,
-        init_cfg=None,
+        init_cfg=[
+            dict(type='Kaiming', layer='Conv2d'),
+            dict(type='Constant', val=1, layer=['BatchNorm2d', 'SyncBatchNorm'])
+        ],
     ):
         super().__init__(init_cfg)
 
@@ -298,3 +301,17 @@ class LPSNet(BaseModule):
 
         # Return the concatenated feature map
         return [out]
+
+    def init_weights(self):
+        """Initialize the weights of the model."""
+        super().init_weights()
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu'
+                )
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, (nn.BatchNorm2d, nn.SyncBatchNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
