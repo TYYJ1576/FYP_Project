@@ -1,45 +1,34 @@
 import torch
-from torch.profiler import profile, record_function, ProfilerActivity
+import time
+
 from mmseg.apis import init_model
 from mmengine import Config
 
-def main():
-    # Initialize the MMSegmentation model
-    config_file = 'configs/lpsnet/lpsnet_m_90k_cityscapes-768x768.py'
-    checkpoint_file = 'iter_63000.pth'
-    device = 'cuda:0'
+config_file = 'configs/lpsnet/lpsnet_s_cityscapes-1536x768.py'
+cfg = Config.fromfile(config_file)
 
-    model = init_model(config_file, checkpoint_file, device=device)
-    model.eval()
+checkpoint_file = 'work_dirs/lpsnet/lpsnet_s_cityscapes-1536x768/iter_20000.pth'
 
-    # Load the model's config to get input dimensions
-    cfg = Config.fromfile(config_file)
-    img_scale = (768, 768)
-    for pipeline_step in cfg.test_pipeline:
-        if 'img_scale' in pipeline_step:
-            img_scale = pipeline_step['img_scale']
-            break
-    if img_scale is None:
-        img_scale = (1024, 512)
-        print(f'img_scale not found in config. Using default img_scale: {img_scale}')
-    if isinstance(img_scale, list):
-        img_scale = img_scale[0]
-    input_width, input_height = img_scale
+model = init_model(cfg, checkpoint_file, device='cuda:0')
 
-    # Prepare input tensor
-    input_tensor = torch.randn(1, 3, input_height, input_width).to(device)
+model.eval()
 
-    # Warm up the model
+input_tensor = torch.randn(1, 3, 768, 1536).cuda()
+
+with torch.no_grad():
+    for _ in range(10):
+        _ = model(input_tensor)
+
+latency_acc = 0
+
+for i in range(1000):
+    start_time = time.time()
+
     with torch.no_grad():
-        for _ in range(10):
-            _ = model(return_loss=False, img=[input_tensor])
+        _ = model(input_tensor)
 
-    # Measure latency using PyTorch profiler
-    with profile(activities=[ProfilerActivity.CUDA], record_shapes=False) as prof:
-        with torch.no_grad():
-            _ = model(return_loss=False, img=[input_tensor])
+    end_time = time.time()
+    latency_acc += (end_time - start_time)
 
-    print(prof.key_averages().table(sort_by="self_cuda_time_total"))
-
-if __name__ == '__main__':
-    main()
+latency = (latency_acc / 1000) * 1000
+print(f"Inference Latency: {latency:.3f} ms")
