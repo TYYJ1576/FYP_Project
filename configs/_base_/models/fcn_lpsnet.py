@@ -32,18 +32,18 @@ model = dict(
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        #loss_decode=dict(
-        #    type='CrossEntropyLoss',
-        #    use_sigmoid=False,
-        #    loss_weight=1.0
-        #),
+        loss_decode=dict(
+            type='CrossEntropyLoss',
+            use_sigmoid=False,
+            loss_weight=1.0
+        ),
 
         # Add the OHEMPixelSampler
-        #sampler=dict(
-        #    type='OHEMPixelSampler',
-        #    thresh=0.7,
-        #    min_kept=10000,
-        #),
+        sampler=dict(
+            type='OHEMPixelSampler',
+            thresh=0.7,
+            min_kept=10000,
+        ),
     ),
     # model training and testing settings
     train_cfg=dict(),
