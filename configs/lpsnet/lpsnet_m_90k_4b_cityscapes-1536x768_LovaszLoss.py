@@ -1,0 +1,67 @@
+_base_ = [
+    '../_base_/models/fcn_lpsnet.py',
+    '../_base_/datasets/cityscapes.py',
+    '../_base_/default_runtime.py',
+    '../_base_/schedules/schedule_90k.py',
+]
+
+crop_size = (1536, 768)
+
+train_pipeline = [
+    dict(
+        type='RandomResize',
+        scale=crop_size,
+        ratio_range=(0.5, 2.0),
+        resize_type='ResizeStepScaling',
+        step_size=0.25,
+        keep_ratio=True,
+    ),
+    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
+    dict(
+        type='PhotoMetricDistortion',
+        brightness_delta=0.4,
+        contrast_range=(0.6, 1.4),
+        saturation_range=(0.6, 1.4),
+        hue_delta=18,
+    )
+]
+
+model = dict(
+    type='EncoderDecoder',
+    data_preprocessor=data_preprocessor,
+    backbone=dict(
+        type='LPSNet',
+        in_channels=3,
+        depths=[1, 3, 3, 10, 10],
+        channels=[8, 24, 48, 96, 96],
+        scale_ratios=[1.0, 0.25],
+        init_cfg=[
+            dict(type='Kaiming', layer='Conv2d'),
+            dict(type='Constant', val=1, bias=0, layer=['BatchNorm2d', 'SyncBatchNorm'])
+        ]
+    ),
+    decode_head=dict(
+        type='FCNHead',
+        in_channels=96 * 2,  # channels[-1] * num_paths
+        in_index=0,
+        channels=96 * 2,
+        num_convs=1,
+        concat_input=False,
+        dropout_ratio=0.1,
+        num_classes=19,
+        norm_cfg=norm_cfg,
+        align_corners=False,
+        loss_decode=dict(
+            type='LovaszLoss',  # Use LovaszLoss
+            loss_type='multi_class',  # For multi-class segmentation
+            per_image=True,  # Compute loss per image
+            reduction='mean',  # Reduce the loss using mean
+            loss_weight=1.0,  # Weight of the loss
+        )
+    )
+)
+
+train_dataloader = dict(
+    batch_size=2,
+    num_workers=2
+    )
