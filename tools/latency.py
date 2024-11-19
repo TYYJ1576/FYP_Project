@@ -4,10 +4,10 @@ import time
 from mmseg.apis import init_model
 from mmengine import Config
 
-config_file = 'configs/lpsnet/lpsnet_s_cityscapes-1536x768.py'
+config_file = 'configs/lpsnet/lpsnet_m_90k_4x1b_cityscapes-1536x768_PolyLR.py'
 cfg = Config.fromfile(config_file)
 
-checkpoint_file = 'work_dirs/lpsnet/lpsnet_s_cityscapes-1536x768/iter_20000.pth'
+checkpoint_file = 'work_dirs/LR/PolyLR/iter_90000.pth'
 
 model = init_model(cfg, checkpoint_file, device='cuda:0')
 

@@ -1,8 +1,8 @@
 _base_ = [
-    '../_base_/models/fcn_lpsnet.py',
-    '../_base_/datasets/cityscapes.py',
-    '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_90k.py',
+    '../../_base_/models/fcn_lpsnet.py',
+    '../../_base_/datasets/cityscapes.py',
+    '../../_base_/default_runtime.py',
+    '../../_base_/schedules/schedule_90k.py',
 ]
 
 crop_size = (1536, 768)
@@ -27,6 +27,7 @@ train_pipeline = [
 ]
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
+
 data_preprocessor = dict(
     type='SegDataPreProcessor',
     mean=[123.675, 116.28, 103.53],
@@ -51,27 +52,21 @@ model = dict(
         ]
     ),
     decode_head=dict(
-        type='FCNHead',
+        type='PSPHead',
         in_channels=96 * 2,  # channels[-1] * num_paths
         in_index=0,
-        channels=96 * 2,
-        num_convs=1,
-        concat_input=False,
+        channels=256,  # Intermediate channels in the PSPHead
+        pool_scales=(1, 2, 3, 6),  # Standard pyramid pooling scales
         dropout_ratio=0.1,
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=[
-            dict(
-                type='CrossEntropyLoss',
-                loss_name='loss_ce',
-                loss_weight=1.0
-            ),
-            dict(
-                type='DiceLoss',
-                loss_name='loss_dice',
-                loss_weight=1.0
-            )
-        ]
-    )
+        loss_decode=dict(
+            type='CrossEntropyLoss',
+            use_sigmoid=False,
+            loss_weight=1.0
+        )
+    ),
+    train_cfg=dict(),
+    test_cfg=dict(mode='whole')
 )
