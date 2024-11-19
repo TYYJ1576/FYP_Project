@@ -1,8 +1,8 @@
 _base_ = [
-    '../_base_/models/fcn_lpsnet.py',
-    '../_base_/datasets/cityscapes.py',
-    '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_90k.py',
+    '../../_base_/models/fcn_lpsnet.py',
+    '../../_base_/datasets/cityscapes.py',
+    '../../_base_/default_runtime.py',
+    '../../_base_/schedules/schedule_90k.py',
 ]
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
