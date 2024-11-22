@@ -3,32 +3,76 @@ import time
 
 from mmseg.apis import init_model
 from mmengine import Config
+from mmseg.models.backbones.lpsnet import LPSNet
 
-config_file = 'configs/lpsnet/lpsnet_m_90k_4x1b_cityscapes-1536x768_PolyLR.py'
-cfg = Config.fromfile(config_file)
+config_file = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
+checkpoint_file = 'work_dirs/lpsnet/lpsnet_l_cityscapes-1536x768/iter_20000.pth'
+depth = [1, 3, 3, 10, 10]
+width = [8, 24, 48, 96, 96]
+resolution = [1, 1/4, 0]
 
-checkpoint_file = 'work_dirs/LR/PolyLR/iter_90000.pth'
+def measure_latency_ms_1(config_file, depths, channels, scale_ratios):
+    cfg = Config.fromfile(config_file)
 
-model = init_model(cfg, checkpoint_file, device='cuda:0')
+    cfg.model.backbone.depths = depths
+    cfg.model.backbone.channels = channels
+    cfg.model.backbone.scale_ratios = scale_ratios
 
-model.eval()
+    path_count = len([i for i in scale_ratios if i > 0])
+    cfg.model.decode_head.in_channels = channels[-1] * path_count
+    cfg.model.decode_head.channels = channels[-1] * path_count
 
-input_tensor = torch.randn(1, 3, 768, 1536).cuda()
+    model = init_model(cfg, checkpoint=None, device='cuda:0')
+    model.eval()
 
-with torch.no_grad():
-    for _ in range(10):
-        _ = model(input_tensor)
-
-latency_acc = 0
-
-for i in range(1000):
-    start_time = time.time()
+    input_tensor = torch.randn(1, 3, 768, 1536).cuda()
 
     with torch.no_grad():
-        _ = model(input_tensor)
+        for _ in range(10):
+            _ = model(input_tensor)
 
-    end_time = time.time()
-    latency_acc += (end_time - start_time)
+    latency_acc = 0
 
-latency = (latency_acc / 1000) * 1000
-print(f"Inference Latency: {latency:.3f} ms")
+    for _ in range(1000):
+        start_time = time.time()
+
+        with torch.no_grad():
+            _ = model(input_tensor)
+
+        end_time = time.time()
+        latency_acc += (end_time - start_time)
+
+    latency = (latency_acc / 1000) * 1000
+
+    return latency
+
+def measure_latency_ms_2(config_file, checkpoint_file):
+    cfg = Config.fromfile(config_file)
+    model = init_model(cfg, checkpoint_file, device='cuda:0')
+    model.eval()
+    # batch size = 1, channels = 3, resolution = 768x1536
+    input_tensor = torch.randn(1, 3, 768, 1536).cuda()
+
+    with torch.no_grad():
+        for _ in range(10):
+            _ = model(input_tensor)
+    
+    latency_acc = 0
+
+    with torch.no_grad():
+        for _ in range(1000):
+            start_time = time.time()
+
+            _ = model(input_tensor)
+
+            end_time = time.time()
+            latency_acc += (end_time - start_time)
+    
+    latency = (latency_acc / 1000) * 1000
+    print(f"Inference Latency: {latency:.3f} ms")
+
+def main():
+    measure_latency_ms_1(config_file=config_file, depths=depth, channels=width, scale_ratios=resolution)
+
+if __name__ == '__main__':
+    main()
