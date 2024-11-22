@@ -87,11 +87,25 @@ class LPSNet(BaseModule):
         return nn.ModuleList(path)
 
     def _preprocess_input(self, x):
+        # Get the height and width from the input tensor
         h, w = x.shape[-2:]
+
+        # Convert height and width to tensors
+        h_tensor = torch.tensor(h, dtype=torch.float32)
+        w_tensor = torch.tensor(w, dtype=torch.float32)
+
+        # Return a list where each element is the resized version of 'x' using the scale ratios
         return [
-            _interpolate(x, size=(int(r * h), int(r * w)))
+            _interpolate(
+                x,
+                size=(
+                    torch.floor(r * h_tensor).to(dtype=torch.int64),
+                    torch.floor(r * w_tensor).to(dtype=torch.int64)
+                )
+            )
             for r in self.scale_ratios
         ]
+
 
     def forward(self, x, interact_begin_idx=2):
         inputs = self._preprocess_input(x)
