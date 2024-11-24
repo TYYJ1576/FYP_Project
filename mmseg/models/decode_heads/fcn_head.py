@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from mmcv.cnn import ConvModule
 
 from mmseg.registry import MODELS
@@ -93,4 +94,6 @@ class FCNHead(BaseDecodeHead):
         """Forward function."""
         output = self._forward_feature(inputs)
         output = self.cls_seg(output)
+        output = F.interpolate(output, size=(768, 1536), mode='bilinear', align_corners=False)
+        print("output tensor size: ", output.size())
         return output
