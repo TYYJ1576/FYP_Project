@@ -26,7 +26,7 @@ def convert_to_coreml(config_file, model_file):
         inputs=[ct.ImageType(shape=input_shape, scale=1/255.0, bias=[-0.485, -0.456, -0.406], color_layout="RGB")],
     )
 
-    mlmodel.save("LPSNet.mlmodel")
+    mlmodel.save("LPSNet.mlpackage")
 
 def main():
     config_loc = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
