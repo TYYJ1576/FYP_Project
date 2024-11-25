@@ -40,7 +40,7 @@ def ml_convert():
     mlmodel_fp16.save("segmentation_model_fp16.mlmodel")
 
 def main():
-    ml_convert()
+    onnx_format_converter(config_loc, model_loc)
 
 if __name__ == '__main__':
     main()

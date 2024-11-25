@@ -5,8 +5,8 @@ from mmseg.apis import init_model
 from mmengine import Config
 from mmseg.models.backbones.lpsnet import LPSNet
 
-config_file = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
-checkpoint_file = 'work_dirs/lpsnet/lpsnet_l_cityscapes-1536x768/iter_20000.pth'
+config_file = 'configs/lpsnet/lpsnet_learningrate_test/lpsnet_m_90k_4x4b_cityscapes-1536x768_CosLR.py'
+checkpoint_file = 'work_dirs/lpsnet_m_90k_4x4b_cityscapes-1536x768_CosLR/iter_90000.pth'
 depth = [1, 3, 3, 10, 10]
 width = [8, 24, 48, 96, 96]
 resolution = [1, 1/4, 0]
@@ -53,6 +53,7 @@ def measure_latency_ms_2(config_file, checkpoint_file):
     # batch size = 1, channels = 3, resolution = 768x1536
     input_tensor = torch.randn(1, 3, 768, 1536).cuda()
 
+
     with torch.no_grad():
         for _ in range(10):
             _ = model(input_tensor)
@@ -72,7 +73,8 @@ def measure_latency_ms_2(config_file, checkpoint_file):
     print(f"Inference Latency: {latency:.3f} ms")
 
 def main():
-    measure_latency_ms_1(config_file=config_file, depths=depth, channels=width, scale_ratios=resolution)
+   # measure_latency_ms_1(config_file=config_file, depths=depth, channels=width, scale_ratios=resolution)
+    measure_latency_ms_2(config_file, checkpoint_file)
 
 if __name__ == '__main__':
     main()
