@@ -18,6 +18,7 @@ model = dict(
         depths=[1, 3, 3, 10, 10],
         channels=[8, 24, 48, 96, 96],
         scale_ratios=[1.0, 0.25],
+        conv_type='constant',
         init_cfg=[
             dict(type='Kaiming', layer='Conv2d'),
             dict(type='Constant', val=1, bias=0, layer=['BatchNorm2d', 'SyncBatchNorm'])

@@ -25,6 +25,7 @@ from .unet import UNet
 from .vit import VisionTransformer
 from .vpd import VPD
 from .lpsnet import LPSNet
+from .lpsnet_blocks import LPSNet_Block
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
@@ -32,5 +33,5 @@ __all__ = [
     'VisionTransformer', 'SwinTransformer', 'MixVisionTransformer',
     'BiSeNetV1', 'BiSeNetV2', 'ICNet', 'TIMMBackbone', 'ERFNet', 'PCPVT',
     'SVT', 'STDCNet', 'STDCContextPathNet', 'BEiT', 'MAE', 'PIDNet', 'MSCAN',
-    'DDRNet', 'VPD', 'LPSNet'
+    'DDRNet', 'VPD', 'LPSNet', 'LPSNet_Block'
 ]

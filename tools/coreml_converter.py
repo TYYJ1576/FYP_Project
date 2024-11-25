@@ -1,46 +1,41 @@
 import torch
-import torch.onnx
-import warnings
 import coremltools as ct
-
+import torch.onnx
 from mmseg.apis import init_model
 from mmengine import Config
 
-config_loc = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
-model_loc = 'work_dirs/lpsnet_l/iter_90000.pth'
-
-def onnx_format_converter(config_file, model_file):
+def convert_to_coreml(config_file, model_file):
+    # Load the configuration
     cfg = Config.fromfile(config_file)
-    model = init_model(cfg, model_file, device='cuda:0')
+    
+    # Initialize the model on CPU
+    model = init_model(cfg, model_file, device='cpu')
     model.eval()
     
-    dummy_input = torch.randn(1, 3, 1536, 512).cuda()
-    
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)
-        torch.onnx.export(
-            model,
-            dummy_input,
-            "LPSNet_l.onnx",
-            export_params=True,
-            opset_version=11,
-            do_constant_folding=True,
-            input_names=['input'],
-            output_names=['output'],
-            dynamic_axes={
-                'input': {0: 'batch_size', 2: 'height', 3: 'width'},
-                'output': {0: 'batch_size', 2: 'height', 3: 'width'}
-            }
-        )
+    # (Optional) If you have a state_dict to load
+    # model.load_state_dict(torch.load('lpsnet_weights.pth', map_location='cpu'))
 
-def ml_convert():
-    onnx_model_path = 'LPSNet_l.onnx'
-    mlmodel = ct.converters.onnx.convert(model=onnx_model_path)
-    mlmodel_fp16 = ct.models.neural_network.quantization_utils.quantize_weights(mlmodel, nbits=16)
-    mlmodel_fp16.save("segmentation_model_fp16.mlmodel")
+    # Trace the model with a sample input on CPU
+    dummy_input = torch.rand(1, 3, 1536, 768)  # On CPU by default
+    traced_model = torch.jit.trace(model, dummy_input)
+
+    input_shape = (1, 3, 1536, 768)
+    
+    mlmodel = ct.convert(
+        traced_model,  # or scripted_model
+        inputs=[ct.ImageType(shape=input_shape, scale=1/255.0, bias=[-0.485, -0.456, -0.406], color_layout="RGB")],
+    )
+
+    mlmodel.save("LPSNet.mlpackage")
 
 def main():
+<<<<<<< HEAD
     onnx_format_converter(config_loc, model_loc)
+=======
+    config_loc = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
+    model_loc = 'work_dirs/lpsnet_l/iter_90000.pth'
+    convert_to_coreml(config_loc, model_loc)
+>>>>>>> 3d89aaffb49360097ad558f10e5ea3964bbb9647
 
 if __name__ == '__main__':
     main()

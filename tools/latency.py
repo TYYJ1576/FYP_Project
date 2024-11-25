@@ -43,7 +43,6 @@ def measure_latency_ms_1(config_file, depths, channels, scale_ratios):
         latency_acc += (end_time - start_time)
 
     latency = (latency_acc / 1000) * 1000
-
     return latency
 
 def measure_latency_ms_2(config_file, checkpoint_file):
