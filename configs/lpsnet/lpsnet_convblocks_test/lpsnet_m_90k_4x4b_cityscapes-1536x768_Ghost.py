@@ -1,8 +1,8 @@
 _base_ = [
-    '../_base_/models/fcn_lpsnet.py',
-    '../_base_/datasets/cityscapes.py',
-    '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_90k.py',
+    '../../_base_/models/fcn_lpsnet.py',
+    '../../_base_/datasets/cityscapes.py',
+    '../../_base_/default_runtime.py',
+    '../../_base_/schedules/schedule_90k.py',
 ]
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
@@ -16,16 +16,17 @@ data_preprocessor = dict(
     pad_val=0,
     seg_pad_val=255)
 
+
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
     backbone=dict(
-        type='LPSNet',
+        type='LPSNet_Block',
         in_channels=3,
         depths=[1, 3, 3, 10, 10],
         channels=[8, 24, 48, 96, 96],
-        scale_ratios=[0.75, 0.25],
-        conv_type='standard',
+        scale_ratios=[1.0, 0.25],
+        conv_type='ghost',
         init_cfg=[
             dict(type='Kaiming', layer='Conv2d'),
             dict(type='Constant', val=1, bias=0, layer=['BatchNorm2d', 'SyncBatchNorm'])

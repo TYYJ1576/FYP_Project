@@ -26,12 +26,16 @@ def convert_to_coreml(config_file, model_file):
         inputs=[ct.ImageType(shape=input_shape, scale=1/255.0, bias=[-0.485, -0.456, -0.406], color_layout="RGB")],
     )
 
-    mlmodel.save("LPSNet.mlmodel")
+    mlmodel.save("LPSNet.mlpackage")
 
 def main():
+<<<<<<< HEAD
+    onnx_format_converter(config_loc, model_loc)
+=======
     config_loc = 'configs/lpsnet/lpsnet_l_90k_4x4b_cityscapes-1536x768.py'
     model_loc = 'work_dirs/lpsnet_l/iter_90000.pth'
     convert_to_coreml(config_loc, model_loc)
+>>>>>>> 3d89aaffb49360097ad558f10e5ea3964bbb9647
 
 if __name__ == '__main__':
     main()
