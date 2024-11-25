@@ -38,7 +38,6 @@ class LPSNet(BaseModule):
         channels,
         scale_ratios,
         in_channels=3,
-        block_type='separable',
         init_cfg=[
             dict(type='Kaiming', layer='Conv2d'),
             dict(type='Constant', val=1, layer=['BatchNorm2d', 'SyncBatchNorm'])
@@ -50,7 +49,6 @@ class LPSNet(BaseModule):
         self.channels = channels
         self.scale_ratios = [r for r in scale_ratios if r > 0]
         self.in_channels = in_channels
-        self.conv_type = conv_type
 
         self.num_paths = len(self.scale_ratios)
         self.num_blocks = len(depths)
@@ -72,34 +70,18 @@ class LPSNet(BaseModule):
             blocks = []
             for i in range(d):
                 stride = 2 if (i == 0 and b != self.num_blocks - 1) else 1
-                if self.conv_type == 'Separable':
-                    blocks.append(
-                        SeperableConvModule(
-                            in_channels=c_in if i == 0 else c,
-                            out_channels=c,
-                            kernel_size=3,
-                            padding=1,
-                            stride=stride,
-                            bias=False,
-                            norm_cfg=dict(type='BN'),
-                            act_cfg=dict(type='ReLU'),
-                        )
+                blocks.append(
+                    ConvModule(
+                        in_channels=c_in if i == 0 else c,
+                        out_channels=c,
+                        kernel_size=3,
+                        padding=1,
+                        stride=stride,
+                        bias=False,
+                        norm_cfg=dict(type='BN'),
+                        act_cfg=dict(type='ReLU'),
                     )
-                elif self.conv_type == 'standard':
-                    blocks.append(
-                        ConvModule(
-                            in_channels=c_in if i == 0 else c,
-                            out_channels=c,
-                            kernel_size=3,
-                            padding=1,
-                            stride=stride,
-                            bias=False,
-                            norm_cfg=dict(type='BN'),
-                            act_cfg=dict(type='ReLU'),
-                        )
-                    )
-                else:
-                    raise ValueError(f"Unsupported convolution type: {self.conv_type}")
+                )
                 c_in = c
             path.append(nn.Sequential(*blocks))
         return nn.ModuleList(path)
@@ -165,57 +147,3 @@ class LPSNet(BaseModule):
             elif isinstance(m, (nn.BatchNorm2d, nn.SyncBatchNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-class SeparableConvModule(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernal_size=3,
-        stride=1,
-        padding=1,
-        bias=False,
-        norm_cfg=dict(type='BN'),
-        act_cfg=dict(type='Relu'),
-    ):
-        super(SeparableConvModule, self).__init__()
-
-        # Depthwise convolution
-        self.depthwise = nn.Conv2d(
-            in_channels,
-            in_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=in_channels,  # Groups set to in_channels for depthwise convolution
-            bias=bias
-        )
-
-        # Pointwise convolution
-        self.pointwise = nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size=1,
-            bias=bias
-        )
-
-        # Normalization layer
-        if norm_cfg is not None:
-            self.norm = nn.BatchNorm2d(out_channels)
-        else:
-            self.norm = None
-
-        # Activation layer
-        if act_cfg is not None:
-            self.activation = nn.ReLU(inplace=True)
-        else:
-            self.activation = None
-
-    def forward(self, x):
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        if self.norm is not None:
-            x = self.norm(x)
-        if self.activation is not None:
-            x = self.activation(x)
-        return x
