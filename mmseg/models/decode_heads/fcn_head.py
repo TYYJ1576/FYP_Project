@@ -94,6 +94,4 @@ class FCNHead(BaseDecodeHead):
         """Forward function."""
         output = self._forward_feature(inputs)
         output = self.cls_seg(output)
-        output = F.interpolate(output, size=(768, 1536), mode='bilinear', align_corners=False)
-        print("output tensor size: ", output.size())
         return output
