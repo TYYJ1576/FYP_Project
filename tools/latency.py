@@ -5,8 +5,8 @@ from mmseg.apis import init_model
 from mmengine import Config
 from mmseg.models.backbones.lpsnet import LPSNet
 
-config_file = 'work_dirs/conv_blocks/lpsnet_m_90k_4x4b_cityscapes-1536x768_Ghost/lpsnet_m_90k_4x4b_cityscapes-1536x768_Ghost.py'
-checkpoint_file = 'work_dirs/conv_blocks/lpsnet_m_90k_4x4b_cityscapes-1536x768_Ghost/iter_90000.pth'
+config_file = 'work_dirs/conv_blocks/lpsnet_m_90k_4x4b_cityscapes-1536x768_Residual/lpsnet_m_90k_4x4b_cityscapes-1536x768_Residual.py'
+checkpoint_file = 'work_dirs/conv_blocks/lpsnet_m_90k_4x4b_cityscapes-1536x768_Residual/iter_90000.pth'
 depth = [1, 3, 3, 10, 10]
 width = [8, 24, 48, 96, 96]
 resolution = [1, 1/4, 0]
