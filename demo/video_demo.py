@@ -86,12 +86,18 @@ def main():
             flag, frame = cap.read()
             if not flag:
                 break
+            
+            print("C")
 
             # test a single image
             result = inference_model(model, frame)
 
+            print("B")
+
             # blend raw image and prediction
-            draw_img = show_result_pyplot(model, frame, result)
+            draw_img = show_result_pyplot(model, frame, result, show=False)
+
+            print("A")
 
             if args.show:
                 cv2.imshow('video_demo', draw_img)
@@ -102,6 +108,7 @@ def main():
                     draw_img = cv2.resize(draw_img,
                                           (output_width, output_height))
                 writer.write(draw_img)
+            print("Running")
     finally:
         if writer:
             writer.release()
